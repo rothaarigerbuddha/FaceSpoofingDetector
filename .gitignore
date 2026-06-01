@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# Tooling
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Project artifacts
+runs/
+outputs/
+*.log
+
+# Model checkpoints / weights (large binaries — keep out of git)
+weights/
+*.pth
+*.pth.tar
+*.onnx
+*.ckpt
+
+# Datasets (downloaded separately to D:\projects\celeba-spoof)
+data/
+datasets/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

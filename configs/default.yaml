@@ -1,0 +1,23 @@
+# Default configuration for FaceSpoofingDetector.
+# Paths assume the dataset was downloaded to D:\projects\celeba-spoof.
+
+dataset:
+  data_root: "D:/projects/celeba-spoof"
+  # Label JSON files (relative to data_root or absolute). Adjust to the mirror's layout.
+  train_labels: "metas/intra_test/train_label.json"
+  test_labels: "metas/intra_test/test_label.json"
+
+models:
+  # Models to include in `fsd compare`. Only aenet ships pretrained weights;
+  # the rest should be trained first (`fsd train`) and pointed at via --weights.
+  compare: [aenet, cdcn, deeppixbis, efficientnet, vit]
+
+eval:
+  fpr_targets: [0.01, 0.005, 0.001]
+  threshold: 0.5
+  batch_size: 64
+
+train:
+  epochs: 3
+  batch_size: 64
+  lr: 0.0001

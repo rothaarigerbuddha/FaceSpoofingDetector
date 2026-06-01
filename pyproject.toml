@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "facespoofingdetector"
+version = "0.1.0"
+description = "Analyze the CelebA-Spoof dataset and detect face-spoofing images by comparing multiple anti-spoofing models."
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = { text = "MIT" }
+authors = [{ name = "LucaKad" }]
+
+# Core deps needed for dataset analysis + CLI (no deep-learning runtime).
+dependencies = [
+    "numpy>=1.24",
+    "opencv-python>=4.8",
+    "Pillow>=10.0",
+    "tqdm>=4.66",
+    "PyYAML>=6.0",
+    "rich>=13.0",
+]
+
+[project.optional-dependencies]
+# Deep-learning runtime for the model wrappers + training/inference.
+# Install torch matching your CUDA build from https://pytorch.org.
+torch = [
+    "torch>=2.2",
+    "torchvision>=0.17",
+    "timm>=0.9",          # EfficientNet / ViT backbones
+    "scikit-learn>=1.3",  # metric helpers
+]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.5",
+]
+
+[project.scripts]
+fsd = "fsd.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

@@ -1,0 +1,15 @@
+# Core (dataset analysis + CLI) — no deep-learning runtime required.
+numpy>=1.24
+opencv-python>=4.8
+Pillow>=10.0
+tqdm>=4.66
+PyYAML>=6.0
+rich>=13.0
+
+# Deep-learning runtime (model wrappers, train/detect/compare).
+# NOTE: install a torch build that matches your CUDA from https://pytorch.org
+# and use Python 3.10-3.12 (PyTorch has no 3.14 wheels yet).
+torch>=2.2
+torchvision>=0.17
+timm>=0.9
+scikit-learn>=1.3
