@@ -47,8 +47,10 @@ class CelebASpoofDataset(Dataset):
 
 
 # input_size / normalize per model, matching each wrapper's inference transform.
+# AENet now uses ImageNet normalize (matches the official client.py and the
+# ImageNet trunk warm-start in detectors/aenet.py), so train and eval agree.
 _MODEL_PREPROC = {
-    "aenet": (224, False),
+    "aenet": (224, True),
     "cdcn": (256, True),
     "deeppixbis": (224, True),
     "efficientnet": (224, True),

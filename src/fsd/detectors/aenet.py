@@ -118,10 +118,48 @@ def _load_checkpoint(model: nn.Module, ckpt_path: str | Path) -> None:
         raise RuntimeError(f"No matching parameters loaded from {ckpt_path}")
 
 
+def _warmstart_imagenet(model: AENet) -> int:
+    """Initialise AENet's ResNet-18 trunk from torchvision ImageNet weights.
+
+    AENet has *no* CelebA-Spoof checkpoint shipped with this repo, and its custom
+    ResNet-18 (unlike timm/torchvision backbones) has no built-in pretrained path,
+    so a fresh AENet starts fully random -> chance-level AUC. Its trunk layer names
+    (conv1/bn1/layer1..layer4) match torchvision ``resnet18`` exactly, so we copy the
+    ImageNet weights into the trunk and leave the task heads (fc_live, etc.) random.
+    This puts AENet on equal footing with EfficientNet/DeepPixBiS, which also start
+    from ImageNet backbones, making a from-scratch fine-tune a *fair* comparison.
+
+    Returns the number of trunk tensors copied (0 if torchvision weights are absent).
+    """
+    try:
+        from torchvision.models import ResNet18_Weights, resnet18
+
+        src = resnet18(weights=ResNet18_Weights.IMAGENET1K_V1).state_dict()
+    except Exception:  # offline / no weight cache -> stay random, caller is told
+        return 0
+    own = model.state_dict()
+    copied = 0
+    for key, param in src.items():
+        if key in own and own[key].shape == param.shape:  # skip ImageNet fc (1000-way)
+            own[key].copy_(param)
+            copied += 1
+    return copied
+
+
 @register("aenet")
-def build_aenet(weights: str | None = None, device: str | None = None, **_) -> TorchSpoofDetector:
+def build_aenet(
+    weights: str | None = None,
+    device: str | None = None,
+    imagenet_warmstart: bool = True,
+    **_,
+) -> TorchSpoofDetector:
     model = AENet(num_classes=2)
     if weights:
+        # Official CelebA-Spoof checkpoint (ckpt_iter.pth.tar) if the user supplies one.
         _load_checkpoint(model, weights)
-    # AENet's published preprocessing is Resize(224) + ToTensor (no ImageNet normalize).
-    return TorchSpoofDetector(model, input_size=224, normalize=False, device=device)
+    elif imagenet_warmstart:
+        # No checkpoint: warm-start the trunk from ImageNet so training is fair.
+        _warmstart_imagenet(model)
+    # Match the official client.py preprocessing: Resize(224) + ToTensor + ImageNet
+    # normalize. (This also matches the ImageNet warm-start above.)
+    return TorchSpoofDetector(model, input_size=224, normalize=True, device=device)

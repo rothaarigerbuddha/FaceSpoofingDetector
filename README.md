@@ -62,7 +62,33 @@ fsd compare --labels ...\test_label.json --data-root D:\projects\celeba-spoof \
 
 Metrics reported: **AUC, EER, APCER/BPCER/ACER, and TPR@FPR** (the dataset's headline metric).
 
-> **Note:** only AENet has CelebA-Spoof pretrained weights. The other four start from ImageNet backbones with a randomly-initialised head — train them with `fsd train`/`fsd benchmark` before the comparison numbers are meaningful.
+> **Note:** none of the five models ship with CelebA-Spoof weights here. AENet's
+> official `ckpt_iter.pth.tar` is not bundled; if you do not pass one, AENet's
+> ResNet-18 trunk is **ImageNet warm-started** (see `detectors/aenet.py`) so that
+> training it from scratch is fair against EfficientNet/DeepPixBiS/ViT, which also
+> start from ImageNet backbones. Train any model with `fsd train`/`fsd benchmark`
+> (or the thesis script below) before the comparison numbers are meaningful.
+
+## Reproducible thesis comparison (`scripts/thesis_experiment.py`)
+
+One self-contained, fixed-seed script that trains **AENet, EfficientNet-B0 and
+DeepPixBiS identically** on one balanced CelebA-Spoof subset (intra_test), evaluates
+them, and measures inference speed — the experiment used in the thesis:
+
+```bash
+python scripts/thesis_experiment.py \
+  --data-root ~/datasets/celeba-spoof/CelebA_Spoof_/CelebA_Spoof \
+  --n-train 20000 --n-test 4000 --epochs 3 --batch-size 32 --seed 42 \
+  --out runs/thesis
+```
+
+It reports, per ISO/IEC 30107-3, **APCER / BPCER / ACER at the EER threshold**, plus
+**AUC** and **EER**, and the **inference latency** (ms/image at batch 1) and
+**throughput** (FPS at batch 32) measured on the GPU with warm-up + CUDA
+synchronisation. ViT-B/16 and CDCN are included for inference-speed context only
+(untrained — speed is an architectural property). Output: one summary table on
+stdout + `runs/thesis/results.csv`. On 8 GB VRAM it auto-falls back to a smaller
+batch on CUDA out-of-memory.
 
 ## Train on another machine (local GPU)
 
