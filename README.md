@@ -78,8 +78,8 @@ them, and measures inference speed — the experiment used in the thesis:
 ```bash
 python scripts/thesis_experiment.py \
   --data-root ~/datasets/celeba-spoof/CelebA_Spoof_/CelebA_Spoof \
-  --n-train 20000 --n-test 4000 --epochs 3 --batch-size 32 --seed 42 \
-  --out runs/thesis
+  --n-train 40000 --n-test 4000 --epochs 6 --batch-size 32 --seed 42 \
+  --out runs/thesis_mt
 ```
 
 It reports, per ISO/IEC 30107-3, **APCER / BPCER / ACER at the EER threshold**, plus
@@ -87,8 +87,37 @@ It reports, per ISO/IEC 30107-3, **APCER / BPCER / ACER at the EER threshold**, 
 **throughput** (FPS at batch 32) measured on the GPU with warm-up + CUDA
 synchronisation. ViT-B/16 and CDCN are included for inference-speed context only
 (untrained — speed is an architectural property). Output: one summary table on
-stdout + `runs/thesis/results.csv`. On 8 GB VRAM it auto-falls back to a smaller
+stdout + `runs/<out>/results.csv`. On 8 GB VRAM it auto-falls back to a smaller
 batch on CUDA out-of-memory.
+
+### Multi-task AENet (`aenet_mt`) — does auxiliary supervision help?
+
+The script also trains **`aenet_mt`**: the *same* AENet, on the *same* subset and
+budget, but with CelebA-Spoof's semantic auxiliary labels (the **AENet_C,S** variant):
+
+```
+L = L_live + 0.5·L_attack_type + 0.5·L_illumination + 0.1·L_attributes
+```
+
+CrossEntropy for live/spoof, spoof-type (11 cls) and illumination (5 cls); BCE for
+the 40 binary face attributes. **Masking** (verified on the data): spoof-type and
+illumination are defined for every image (bona-fide = explicit class 0), so their
+losses run on the full batch; the 40 attributes are annotated only on live images
+(all-zero placeholder on spoof), so `L_attributes` is **masked to live images**.
+EfficientNet-B0 and DeepPixBiS stay binary on purpose — the contrast (specialised
+architecture exploiting side information vs. generic CNNs) is the experiment.
+Inference is identical for every model (the `fc_live` head). The geometry variant
+(depth/reflection maps, “G”) is **not** implemented — CelebA-Spoof ships no such
+ground truth. The script prints an `aenet` vs `aenet_mt` ablation so the contribution
+of the auxiliary information is read off directly.
+
+> **Finding (intra_test, 40k/6ep):** the auxiliary semantic supervision did **not**
+> improve robustness here — it was slightly *worse* (ACER 0.028 → 0.051, ~3.7σ). The
+> auxiliary heads did train (their losses fall), and training stayed stable, so this
+> is a genuine result, not a bug: on a saturated *intra-domain* protocol the binary
+> signal already suffices, and the extra objectives mainly compete for capacity.
+> Auxiliary supervision is expected to pay off in low-data or **cross-domain**
+> settings; testing that is the natural next step.
 
 ## Train on another machine (local GPU)
 

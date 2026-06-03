@@ -55,11 +55,24 @@ from fsd.detectors.registry import build_detector  # noqa: E402
 from fsd.eval.compare import sample_entries, score_detector  # noqa: E402
 from fsd.eval.metrics import apcer_bpcer_acer, auc_score, eer_score  # noqa: E402
 from fsd.train import _MODEL_PREPROC, train_model  # noqa: E402
+from fsd.train_multitask import DEFAULT_LAMBDAS, train_aenet_multitask  # noqa: E402
 
 # Models we actually train + evaluate for accuracy (the thesis comparison).
-TRAINED_MODELS = ["aenet", "efficientnet", "deeppixbis"]
+#   aenet     -> binary live/spoof supervision only
+#   aenet_mt  -> SAME AENet, but multi-task semantic supervision (AENet_C,S)
+#   efficientnet / deeppixbis -> binary only (generic CNNs, the contrast)
+TRAINED_MODELS = ["aenet", "aenet_mt", "efficientnet", "deeppixbis"]
 # Extra models measured for inference latency only (no training, untrained weights).
 LATENCY_ONLY_MODELS = ["vit", "cdcn"]
+
+
+def arch_of(name: str) -> str:
+    """Map a training config name to the registry architecture used for eval/latency.
+
+    ``aenet_mt`` is a *training recipe*, not a new architecture: at inference it is a
+    plain AENet scored through fc_live, identical to the binary ``aenet``.
+    """
+    return "aenet" if name == "aenet_mt" else name
 
 
 # --------------------------------------------------------------------------- #
@@ -84,7 +97,7 @@ def evaluate_accuracy(model_name, weights, entries, data_root, *, batch_size, de
     false-accept rate == false-reject rate) -- the standard single-number operating
     point for face anti-spoofing, and one we can justify on defence.
     """
-    detector = build_detector(model_name, weights=weights, device=device)
+    detector = build_detector(arch_of(model_name), weights=weights, device=device)
     scores, labels = score_detector(detector, entries, data_root, batch_size=batch_size)
 
     auc = auc_score(scores, labels)
@@ -114,10 +127,11 @@ def measure_speed(model_name, weights, *, device, warmup=15, iters_b1=80, iters_
     we synchronise before/after every timed region; a warm-up absorbs cuDNN autotune
     and lazy CUDA-context/allocator costs so the first kernels don't skew the mean.
     """
-    detector = build_detector(model_name, weights=weights, device=device)
+    arch = arch_of(model_name)
+    detector = build_detector(arch, weights=weights, device=device)
     model = detector.model.eval()
     dev = detector.device
-    size = _MODEL_PREPROC.get(model_name, (224, True))[0]  # 256 for CDCN, else 224
+    size = _MODEL_PREPROC.get(arch, (224, True))[0]  # 256 for CDCN, else 224
     is_cuda = dev.type == "cuda"
 
     def sync():
@@ -189,14 +203,14 @@ def main() -> int:
     ap.add_argument("--data-root", required=True, help="CelebA-Spoof root (holds Data/ and metas/).")
     ap.add_argument("--train-labels", help="Defaults to <root>/metas/intra_test/train_label.json")
     ap.add_argument("--test-labels", help="Defaults to <root>/metas/intra_test/test_label.json")
-    ap.add_argument("--n-train", type=int, default=20000, help="Balanced training images.")
+    ap.add_argument("--n-train", type=int, default=40000, help="Balanced training images.")
     ap.add_argument("--n-test", type=int, default=4000, help="Balanced test images for evaluation.")
-    ap.add_argument("--epochs", type=int, default=3)
+    ap.add_argument("--epochs", type=int, default=6)
     ap.add_argument("--batch-size", type=int, default=32)
     ap.add_argument("--lr", type=float, default=1e-4)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--device", default=None, help="cuda | cpu (auto if omitted).")
-    ap.add_argument("--out", default="runs/thesis", help="Output dir for weights + CSV.")
+    ap.add_argument("--out", default="runs/thesis_mt", help="Output dir for weights + CSV.")
     ap.add_argument("--skip-train", action="store_true",
                     help="Reuse <out>/<model>.pth instead of training (faster re-runs).")
     args = ap.parse_args()
@@ -217,6 +231,12 @@ def main() -> int:
     print("NOTE: AENet has no shipped CelebA-Spoof checkpoint -> it is TRAINED here on")
     print("      the same subset as the others (ImageNet-warm-started trunk) for a")
     print("      fair comparison. APCER/BPCER/ACER are reported at the EER threshold.")
+    print("MULTI-TASK: 'aenet_mt' = AENet_C,S, the SAME AENet trained with extra")
+    print("      semantic supervision (spoof-type + illumination + 40 face attributes);")
+    print(f"      aux loss weights {DEFAULT_LAMBDAS}. 'aenet' is the binary baseline.")
+    print("      Both share the identical training subset & budget -> the only")
+    print("      difference is supervision (the thesis variable). Evaluation is binary")
+    print("      (fc_live) for every model. Geometry maps (variant G) are NOT used.")
     print("=" * 78)
 
     # The shared, balanced test subset -- identical for every model (fixed seed).
@@ -238,12 +258,21 @@ def main() -> int:
             bs = args.batch_size
             while True:
                 try:
-                    saved = train_model(
-                        model_name=name, labels=train_labels, data_root=str(root),
-                        epochs=args.epochs, batch_size=bs, lr=args.lr,
-                        limit=args.n_train, device=device, out_dir=str(out),
-                    )
-                    # train_model saves as <out>/<name>.pth -> matches weights_path
+                    if name == "aenet_mt":
+                        # AENet with masked multi-task semantic supervision (AENet_C,S).
+                        saved = train_aenet_multitask(
+                            labels=train_labels, data_root=str(root),
+                            epochs=args.epochs, batch_size=bs, lr=args.lr,
+                            limit=args.n_train, device=device, out_dir=str(out),
+                        )
+                    else:
+                        # Generic binary live/spoof fine-tune (unchanged path).
+                        saved = train_model(
+                            model_name=name, labels=train_labels, data_root=str(root),
+                            epochs=args.epochs, batch_size=bs, lr=args.lr,
+                            limit=args.n_train, device=device, out_dir=str(out),
+                        )
+                    # both save as <out>/<name>.pth -> matches weights_path
                     print(f"[train] saved {saved}")
                     break
                 except RuntimeError as ex:
@@ -274,8 +303,39 @@ def main() -> int:
     # ---- 3) report ----
     print_table(rows)
     write_csv(rows, out / "results.csv")
+    print_aenet_ablation(rows)
+    print("\nAuxiliary tasks trained on AENet_C,S (semantic variant; geometry omitted):")
+    print(f"  L_attack_type  CE over spoof type (11 cls)   weight {DEFAULT_LAMBDAS['attack_type']}")
+    print(f"  L_illumination CE over illumination (5 cls)  weight {DEFAULT_LAMBDAS['illumination']}")
+    print(f"  L_attributes   BCE over 40 face attrs        weight {DEFAULT_LAMBDAS['attributes']}"
+          "  (masked to LIVE images)")
+    print("  L_live         CE over live/spoof (2 cls)     weight 1.0  (main task)")
     print("Done.")
     return 0
+
+
+def print_aenet_ablation(rows):
+    """Side-by-side: does multi-task semantic supervision help AENet (same budget)?"""
+    by = {r["model"]: r for r in rows}
+    base, mt = by.get("aenet"), by.get("aenet_mt")
+    if not (base and mt and "acer" in base and "acer" in mt):
+        return
+    print("\n" + "=" * 64)
+    print("ABLATION  -  AENet binary  vs  AENet_C,S multi-task (identical budget)")
+    print("=" * 64)
+    h = f"{'metric':<10}{'binary':>12}{'multi-task':>12}{'Δ (mt-bin)':>14}"
+    print(h)
+    print("-" * len(h))
+    # APCER/BPCER/ACER/EER: lower is better; AUC: higher is better.
+    for key, label in [("acer", "ACER"), ("apcer", "APCER"), ("bpcer", "BPCER"),
+                       ("eer", "EER"), ("auc", "AUC")]:
+        b, m = base[key], mt[key]
+        better = (m > b) if key == "auc" else (m < b)
+        mark = "  better" if better else ("  worse" if m != b else "  same")
+        print(f"{label:<10}{b:>12.4f}{m:>12.4f}{m - b:>+14.4f}{mark}")
+    print("\nLower is better for ACER/APCER/BPCER/EER; higher is better for AUC.")
+    print("Interpretation: this delta is the *direct* contribution of CelebA-Spoof's")
+    print("auxiliary semantic information to presentation-attack robustness.")
 
 
 if __name__ == "__main__":

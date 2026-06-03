@@ -92,15 +92,35 @@ class AENet(nn.Module):
             layers.append(block(self.inplanes, planes))
         return nn.Sequential(*layers)
 
-    def forward(self, x):
+    def _trunk(self, x):
+        """Shared ResNet-18 trunk -> pooled 512-d embedding."""
         x = self.relu(self.bn1(self.conv1(x)))
         x = self.maxpool(x)
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
-        x = self.avgpool(x).flatten(1)
-        return self.fc_live(x)
+        return self.avgpool(x).flatten(1)
+
+    def forward(self, x):
+        # Inference / binary path: only the live/spoof head is used for scoring,
+        # so eval and all generic code see exactly the same 2-logit output as before.
+        return self.fc_live(self._trunk(x))
+
+    def forward_multitask(self, x):
+        """Return every head's logits for multi-task *training* only.
+
+        Order: (live[2], attack_type[11], illumination[5], attributes[40]).
+        The geometry heads (depth/reflection) are NOT used -- CelebA-Spoof ships no
+        depth/reflection maps, so this is the semantic-only variant (AENet_C,S).
+        """
+        feat = self._trunk(x)
+        return (
+            self.fc_live(feat),
+            self.fc_attack(feat),
+            self.fc_light(feat),
+            self.fc_live_attribute(feat),
+        )
 
 
 def _load_checkpoint(model: nn.Module, ckpt_path: str | Path) -> None:
