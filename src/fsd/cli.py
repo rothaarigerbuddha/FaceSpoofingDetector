@@ -140,8 +140,12 @@ def cmd_compare(args: argparse.Namespace) -> int:
 # train
 # --------------------------------------------------------------------------- #
 def cmd_train(args: argparse.Namespace) -> int:
+    from fsd.multitask import AuxWeights
     from fsd.train import train_model
 
+    aux_weights = AuxWeights(
+        attack=args.lambda_attack, light=args.lambda_light, attribute=args.lambda_attr
+    )
     out = train_model(
         model_name=args.model,
         labels=args.labels,
@@ -152,6 +156,9 @@ def cmd_train(args: argparse.Namespace) -> int:
         limit=args.limit,
         device=args.device,
         out_dir=args.out,
+        multitask=args.multitask,
+        aux_weights=aux_weights,
+        out_name=args.out_name,
     )
     _print(f"Saved weights to {out}")
     return 0
@@ -240,6 +247,12 @@ def build_parser() -> argparse.ArgumentParser:
     t.add_argument("--limit", type=int, help="Cap training images (for quick runs).")
     t.add_argument("--device")
     t.add_argument("--out", default="weights")
+    t.add_argument("--out-name", help="Override the weights filename stem (default: model name).")
+    t.add_argument("--multitask", action="store_true",
+                   help="AENet only: add semantic auxiliary supervision (AENet_C,S).")
+    t.add_argument("--lambda-attack", type=float, default=0.5, help="Weight for the spoof-type loss.")
+    t.add_argument("--lambda-light", type=float, default=0.25, help="Weight for the illumination loss.")
+    t.add_argument("--lambda-attr", type=float, default=0.1, help="Weight for the 40-attribute BCE loss.")
     t.set_defaults(func=cmd_train)
 
     b = sub.add_parser("benchmark", help="Train several models on a local dataset and evaluate all.")

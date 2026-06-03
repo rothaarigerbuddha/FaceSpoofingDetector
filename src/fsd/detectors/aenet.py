@@ -92,15 +92,37 @@ class AENet(nn.Module):
             layers.append(block(self.inplanes, planes))
         return nn.Sequential(*layers)
 
-    def forward(self, x):
+    def forward_features(self, x):
+        """Backbone embedding (512-d) shared by every head."""
         x = self.relu(self.bn1(self.conv1(x)))
         x = self.maxpool(x)
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.layer4(x)
-        x = self.avgpool(x).flatten(1)
-        return self.fc_live(x)
+        return self.avgpool(x).flatten(1)
+
+    def forward(self, x):
+        # Inference / scoring path: only the live/spoof head. Unchanged on purpose
+        # so eval (predict_batch) and binary training behave exactly as before.
+        return self.fc_live(self.forward_features(x))
+
+    def forward_multitask(self, x) -> dict:
+        """All heads at once, for multi-task supervision during training.
+
+        Returns raw logits per head:
+            live      -> (B, 2)   live/spoof          (label idx 43)
+            attack    -> (B, 11)  spoof type          (label idx 40; 0=Live, 1..10 attacks)
+            light     -> (B, 5)   illumination        (label idx 41; 0=Live, 1..4)
+            attribute -> (B, 40)  CelebA face attrs   (label idx 0..39; live images only)
+        """
+        feat = self.forward_features(x)
+        return {
+            "live": self.fc_live(feat),
+            "attack": self.fc_attack(feat),
+            "light": self.fc_light(feat),
+            "attribute": self.fc_live_attribute(feat),
+        }
 
 
 def _load_checkpoint(model: nn.Module, ckpt_path: str | Path) -> None:

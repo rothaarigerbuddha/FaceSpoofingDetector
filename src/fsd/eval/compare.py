@@ -17,9 +17,13 @@ from fsd.utils.image import read_image_rgb
 class ModelSpec:
     name: str
     weights: str | None = None
+    arch: str | None = None  # registry builder to use; defaults to ``name``
 
     def key(self) -> str:
         return self.name
+
+    def build_name(self) -> str:
+        return self.arch or self.name
 
 
 def sample_entries(
@@ -92,7 +96,7 @@ def compare_models(
     data_root = Path(data_root)
     results: dict[str, MetricResult] = {}
     for spec in specs:
-        detector = build_detector(spec.name, weights=spec.weights, device=device)
+        detector = build_detector(spec.build_name(), weights=spec.weights, device=device)
         scores, labels = score_detector(detector, entries, data_root, batch_size=batch_size)
         results[spec.key()] = evaluate(scores, labels, threshold=threshold)
     return results
