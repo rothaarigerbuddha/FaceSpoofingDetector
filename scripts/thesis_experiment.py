@@ -58,12 +58,23 @@ from fsd.train import _MODEL_PREPROC, train_model  # noqa: E402
 from fsd.train_multitask import DEFAULT_LAMBDAS, train_aenet_multitask  # noqa: E402
 
 # Models we actually train + evaluate for accuracy (the thesis comparison).
-#   aenet     -> binary live/spoof supervision only
-#   aenet_mt  -> SAME AENet, but multi-task semantic supervision (AENet_C,S)
-#   efficientnet / deeppixbis -> binary only (generic CNNs, the contrast)
-TRAINED_MODELS = ["aenet", "aenet_mt", "efficientnet", "deeppixbis"]
-# Extra models measured for inference latency only (no training, untrained weights).
-LATENCY_ONLY_MODELS = ["vit", "cdcn"]
+#   aenet       -> binary live/spoof supervision only
+#   aenet_mt    -> SAME AENet, but multi-task semantic supervision (AENet_C,S)
+#   efficientnet/deeppixbis/mobilenetv3/resnet50/vit -> binary (generic backbones)
+# Order matters: ViT-B/16 is the slowest to train, so it is scheduled LAST.
+TRAINED_MODELS = ["aenet", "aenet_mt", "efficientnet", "deeppixbis",
+                  "mobilenetv3", "resnet50", "vit"]
+
+# Extra models measured for inference latency only (no training).
+#   cdcn -> CDCN's canonical training is DEPTH-SUPERVISED (it regresses a pseudo-
+#           depth map). CelebA-Spoof ships no depth ground truth, so training it
+#           "fairly" as a plain binary classifier would misrepresent the architecture.
+#           We therefore report only its architectural latency, for context.
+LATENCY_ONLY_MODELS = ["cdcn"]
+
+# Per-model training batch size overrides (8 GB VRAM). ViT-B/16 activations are
+# heavy, so it trains at 16; everything else uses the global --batch-size (32).
+MODEL_BATCH = {"vit": 16}
 
 
 def arch_of(name: str) -> str:
@@ -210,10 +221,23 @@ def main() -> int:
     ap.add_argument("--lr", type=float, default=1e-4)
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--device", default=None, help="cuda | cpu (auto if omitted).")
-    ap.add_argument("--out", default="runs/thesis_mt", help="Output dir for weights + CSV.")
+    ap.add_argument("--out", default="runs/thesis_full", help="Output dir for weights + CSV.")
     ap.add_argument("--skip-train", action="store_true",
-                    help="Reuse <out>/<model>.pth instead of training (faster re-runs).")
+                    help="Never train: evaluate existing <out>/<model>.pth (error if missing).")
+    ap.add_argument("--force-retrain", default="",
+                    help="Comma-separated model names to retrain even if weights exist, "
+                         "or 'all'. By default, any model already present in <out> is reused.")
+    ap.add_argument("--models", default="",
+                    help="Comma-separated subset to run (e.g. 'aenet,aenet_mt' for the "
+                         "low-data ablation). Default: all. Latency-only models (cdcn) are "
+                         "included only if explicitly named here.")
     args = ap.parse_args()
+    args.force_retrain = {m.strip() for m in args.force_retrain.split(",") if m.strip()}
+
+    # Optional subset filter (e.g. the aenet/aenet_mt low-data ablation).
+    selected = {m.strip() for m in args.models.split(",") if m.strip()}
+    trained_models = [m for m in TRAINED_MODELS if not selected or m in selected]
+    latency_models = [m for m in LATENCY_ONLY_MODELS if (m in selected if selected else True)]
 
     root = Path(args.data_root).expanduser()
     train_labels = args.train_labels or str(root / "metas/intra_test/train_label.json")
@@ -247,15 +271,25 @@ def main() -> int:
 
     rows = []
 
-    # ---- 1) train + evaluate the three comparison models ----
-    for name in TRAINED_MODELS:
+    # ---- 1) train + evaluate the comparison models ----
+    for name in trained_models:
         print(f"\n{'#' * 70}\n# {name.upper()}\n{'#' * 70}")
         weights_path = out / f"{name}.pth"
 
-        if args.skip_train and weights_path.exists():
-            print(f"[train] skipped, using {weights_path}")
+        # Per-model resume: if this model's weights already exist in --out, reuse
+        # them instead of retraining (unless --force-retrain lists it / is "all").
+        # Lets us seed <out> with weights from an earlier identical-subset/seed run
+        # and only train the new models. --skip-train forces reuse for everything.
+        force = "all" in args.force_retrain or name in args.force_retrain
+        reuse = weights_path.exists() and not force
+        if args.skip_train or reuse:
+            if not weights_path.exists():
+                raise SystemExit(f"--skip-train but {weights_path} is missing")
+            print(f"[train] reuse existing {weights_path} (skipped)")
         else:
-            bs = args.batch_size
+            bs = MODEL_BATCH.get(name, args.batch_size)
+            if bs != args.batch_size:
+                print(f"[train] {name}: batch_size={bs} (per-model override for VRAM)")
             while True:
                 try:
                     if name == "aenet_mt":
@@ -292,8 +326,8 @@ def main() -> int:
               f"| {speed['latency_ms_b1']:.3f} ms/img, {speed['fps_b32']:.1f} FPS")
         rows.append({"model": name, "trained": True, **metrics, **speed})
 
-    # ---- 2) latency-only context models (ViT-B/16, CDCN) ----
-    for name in LATENCY_ONLY_MODELS:
+    # ---- 2) latency-only context models (CDCN: no depth GT to train fairly) ----
+    for name in latency_models:
         print(f"\n{'#' * 70}\n# {name.upper()} (latency only)\n{'#' * 70}")
         speed = measure_speed(name, None, device=device)
         print(f"[speed] {speed['latency_ms_b1']:.3f} ms/img, {speed['fps_b32']:.1f} FPS, "

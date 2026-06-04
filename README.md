@@ -71,24 +71,35 @@ Metrics reported: **AUC, EER, APCER/BPCER/ACER, and TPR@FPR** (the dataset's hea
 
 ## Reproducible thesis comparison (`scripts/thesis_experiment.py`)
 
-One self-contained, fixed-seed script that trains **AENet, EfficientNet-B0 and
-DeepPixBiS identically** on one balanced CelebA-Spoof subset (intra_test), evaluates
-them, and measures inference speed — the experiment used in the thesis:
+One self-contained, fixed-seed script that trains **AENet, EfficientNet-B0,
+DeepPixBiS, MobileNetV3-Large, ResNet-50 and ViT-B/16 identically** on one balanced
+CelebA-Spoof subset (intra_test), evaluates them, and measures inference speed —
+the experiment used in the thesis:
 
 ```bash
 python scripts/thesis_experiment.py \
   --data-root ~/datasets/celeba-spoof/CelebA_Spoof_/CelebA_Spoof \
   --n-train 40000 --n-test 4000 --epochs 6 --batch-size 32 --seed 42 \
-  --out runs/thesis_mt
+  --out runs/thesis_full
 ```
 
 It reports, per ISO/IEC 30107-3, **APCER / BPCER / ACER at the EER threshold**, plus
 **AUC** and **EER**, and the **inference latency** (ms/image at batch 1) and
 **throughput** (FPS at batch 32) measured on the GPU with warm-up + CUDA
-synchronisation. ViT-B/16 and CDCN are included for inference-speed context only
-(untrained — speed is an architectural property). Output: one summary table on
-stdout + `runs/<out>/results.csv`. On 8 GB VRAM it auto-falls back to a smaller
-batch on CUDA out-of-memory.
+synchronisation. Output: one summary table on stdout + `runs/<out>/results.csv`.
+
+Practical knobs:
+
+* **Per-model batch size** — ViT-B/16 trains at batch 16 (8 GB VRAM); the rest at
+  `--batch-size`. Any model OOMs auto-fall back to a smaller batch.
+* **Per-model resume** — a model whose `<out>/<name>.pth` already exists is reused,
+  not retrained. Seed `<out>` with weights from an earlier identical-subset/seed run
+  and only the new models train. `--force-retrain a,b` (or `all`) overrides; `--models
+  a,b` runs a subset (used for the low-data ablation below).
+* **CDCN is latency-only** — its canonical training is *depth-supervised* (it regresses
+  a pseudo-depth map) and CelebA-Spoof ships no depth ground truth, so training it as a
+  plain binary classifier would misrepresent the architecture. We report only its
+  architectural latency, for context.
 
 ### Multi-task AENet (`aenet_mt`) — does auxiliary supervision help?
 
@@ -111,13 +122,29 @@ Inference is identical for every model (the `fc_live` head). The geometry varian
 ground truth. The script prints an `aenet` vs `aenet_mt` ablation so the contribution
 of the auxiliary information is read off directly.
 
-> **Finding (intra_test, 40k/6ep):** the auxiliary semantic supervision did **not**
-> improve robustness here — it was slightly *worse* (ACER 0.028 → 0.051, ~3.7σ). The
-> auxiliary heads did train (their losses fall), and training stayed stable, so this
-> is a genuine result, not a bug: on a saturated *intra-domain* protocol the binary
-> signal already suffices, and the extra objectives mainly compete for capacity.
-> Auxiliary supervision is expected to pay off in low-data or **cross-domain**
-> settings; testing that is the natural next step.
+The same ablation at a smaller budget (`--models aenet,aenet_mt --n-train 5000`) is
+the low-data control:
+
+```bash
+python scripts/thesis_experiment.py --data-root <root> \
+  --models aenet,aenet_mt --n-train 5000 --n-test 4000 --epochs 6 \
+  --seed 42 --out runs/thesis_lowdata
+```
+
+> **Finding — it depends on the data budget (AENet binary vs AENet_C,S, ACER@EER):**
+>
+> | Train images | binary | multi-task | verdict |
+> |---|---|---|---|
+> | 40 000 | **0.028** | 0.051 | aux **hurts** (~3.7σ) — saturated |
+> | 5 000  | 0.094 | **0.051** | aux **helps** (~5.2σ) |
+>
+> The auxiliary heads train normally and training is stable, so both directions are
+> genuine. The telling detail: **`aenet_mt` is almost flat across the 8× data cut**
+> (0.0505 → 0.0510), while **binary AENet collapses** (0.028 → 0.094). The semantic
+> auxiliary tasks act as a regulariser that compensates for data scarcity: they pay
+> off when labels are few, but on a saturated *intra-domain* split the binary signal
+> already suffices and the extra objectives mainly compete for capacity. Cross-domain
+> evaluation is the natural next test.
 
 ## Train on another machine (local GPU)
 

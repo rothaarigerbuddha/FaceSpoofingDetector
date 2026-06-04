@@ -54,6 +54,8 @@ _MODEL_PREPROC = {
     "cdcn": (256, True),
     "deeppixbis": (224, True),
     "efficientnet": (224, True),
+    "mobilenetv3": (224, True),
+    "resnet50": (224, True),
     "vit": (224, True),
 }
 

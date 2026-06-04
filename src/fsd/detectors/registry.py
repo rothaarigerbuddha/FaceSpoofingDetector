@@ -16,6 +16,8 @@ MODEL_INFO: dict[str, str] = {
     "cdcn": "Central Difference Conv Network: fine-grained texture, depth-supervised.",
     "deeppixbis": "DenseNet + pixel-wise binary supervision. Lightweight.",
     "efficientnet": "EfficientNet-B0 transfer-learning binary classifier.",
+    "mobilenetv3": "MobileNetV3-Large transfer-learning binary classifier. Mobile/edge baseline.",
+    "resnet50": "ResNet-50 transfer-learning binary classifier. Classic deep-CNN baseline.",
     "vit": "ViT-B/16 transformer fine-tuned for live/spoof.",
 }
 
@@ -52,6 +54,8 @@ def _ensure_loaded(name: str) -> None:
         "cdcn": "fsd.detectors.cdcn",
         "deeppixbis": "fsd.detectors.deeppixbis",
         "efficientnet": "fsd.detectors.efficientnet",
+        "mobilenetv3": "fsd.detectors.mobilenetv3",
+        "resnet50": "fsd.detectors.resnet50",
         "vit": "fsd.detectors.vit",
     }
     if name in module_for:
