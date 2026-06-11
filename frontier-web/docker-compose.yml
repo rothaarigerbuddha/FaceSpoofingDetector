@@ -1,0 +1,48 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    image: frontier-backend
+    container_name: frontier-backend
+    environment:
+      # appsettings.Development.json already ships a JWT key + connection string,
+      # so Development is the simplest "works out of the box" profile.
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://0.0.0.0:5160
+      # Keep the SQLite file on a named volume so data survives rebuilds.
+      ConnectionStrings__BlogDb: "Data Source=/app/data/blog.db"
+      Auth__Key: "${JWT_KEY:-CHANGE_ME_TO_A_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS}"
+      Auth__Issuer: BlogApi
+      Auth__Audience: BlogApiClients
+    volumes:
+      - backend-data:/app/data
+    ports:
+      # Exposed mainly for Swagger / direct API testing at http://localhost:5160/swagger
+      - "5160:5160"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:5160/posts || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_BASE_URL: "${API_BASE_URL_INTERNAL:-http://backend:5160}"
+    image: frontier-frontend
+    container_name: frontier-frontend
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_BASE_URL: "${API_BASE_URL_INTERNAL:-http://backend:5160}"
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  backend-data:
