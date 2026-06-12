@@ -1,0 +1,19 @@
+# Local env
+.env
+
+# Downloaded by run.sh when not already installed
+/cloudflared
+
+# Backend build output
+backend/**/bin/
+backend/**/obj/
+backend/**/*.user
+*.db
+*.db-shm
+*.db-wal
+
+# Frontend
+frontend/node_modules/
+frontend/.next/
+frontend/next-env.d.ts
+frontend/npm-debug.log*

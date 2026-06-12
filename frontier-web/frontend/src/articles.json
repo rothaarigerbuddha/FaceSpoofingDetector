@@ -1,0 +1,122 @@
+[
+  {
+    "id": "1",
+    "title": "Yuliia Karpets. The Archaeology of the Absent and the Pictorial Intertwinings of Karina Synytsia",
+    "excerpt": "The artist explores the interpenetration of extinction and loss across the dimensions of the planet, art, and individual cities, as well as within intimate environments.",
+    "slug": "yuliia-karpets-archaeology-of-the-absent",
+    "imageUrl": "https://images.unsplash.com/photo-1583847268964-b28dc8f51f92?w=800&q=80",
+    "imageAlt": "Empty room with warm lighting",
+    "category": "Art",
+    "date": "2024-11-01"
+  },
+  {
+    "id": "2",
+    "title": "Dmytro Novak. What Lies Behind the Laws? Philosophy as the Shadow and Conscience of Law",
+    "excerpt": "The philosophy of law is born precisely in this space—between what is written in the law and what a person perceives as just.",
+    "slug": "dmytro-novak-philosophy-of-law",
+    "imageUrl": "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?w=800&q=80",
+    "imageAlt": "Person reading a large document",
+    "category": "Philosophy",
+    "date": "2024-10-20"
+  },
+  {
+    "id": "3",
+    "title": "Mladen Dolar. The Future of Authority?",
+    "excerpt": "Modernity is believed to have dealt a fatal blow to authority, or at least to those elements of it that lack proper grounds or justification.",
+    "slug": "mladen-dolar-future-of-authority",
+    "imageUrl": "https://images.unsplash.com/photo-1504893524553-b855bce32c67?w=800&q=80",
+    "imageAlt": "Cave with dramatic lighting",
+    "category": "Politics",
+    "date": "2024-10-10"
+  },
+  {
+    "id": "4",
+    "title": "Art After Catastrophe. Goya and the Language of Pain",
+    "excerpt": "How painting becomes both a witness and an accuser—a conversation about images of violence, memory, and responsibility.",
+    "slug": "art-after-catastrophe-goya",
+    "imageUrl": "https://images.unsplash.com/photo-1580136579312-94651dfd596d?w=800&q=80",
+    "imageAlt": "Museum gallery with paintings",
+    "category": "Culture",
+    "date": "2024-09-28"
+  },
+  {
+    "id": "5",
+    "title": "Dance of Death. Medieval Allegory in the Modern World",
+    "excerpt": "From Holbein's engravings to modern media, the image of death inviting one to dance has not vanished; it has merely changed its costume.",
+    "slug": "dance-of-death-allegory",
+    "imageUrl": "https://images.unsplash.com/photo-1509023464722-18d996393ca8?w=800&q=80",
+    "imageAlt": "Skeleton illustration",
+    "category": "History",
+    "date": "2024-09-15"
+  },
+  {
+    "id": "6",
+    "title": "The Power of the Uniform. What Does Clothing Say About Authority?",
+    "excerpt": "A uniform is not just clothing. It is a language that the body speaks to other bodies: obey, fear, respect.",
+    "slug": "power-of-the-uniform",
+    "imageUrl": "https://images.unsplash.com/photo-1566753323558-f4e0952af115?w=800&q=80",
+    "imageAlt": "Man in uniform",
+    "category": "Essay",
+    "date": "2024-09-05"
+  },
+  {
+    "id": "7",
+    "title": "Oksana Zabuzhko. The Geography of Memory and the Topology of Trauma",
+    "excerpt": "Exploring how collective trauma maps itself onto physical landscapes, altering the architecture of cities and the subconscious of generations.",
+    "slug": "oksana-zabuzhko-geography-of-memory",
+    "imageUrl": "https://images.unsplash.com/photo-1477959858617-67f85cf4f1df?w=800&q=80",
+    "imageAlt": "Foggy city landscape with old architecture",
+    "category": "Culture",
+    "date": "2024-08-24"
+  },
+  {
+    "id": "8",
+    "title": "The Architecture of Silence. Monastic Spaces and Modern Noise",
+    "excerpt": "A deep dive into how intentional structural void and physical isolation serve as the ultimate resistance against the hyper-connected world.",
+    "slug": "architecture-of-silence-monastic-spaces",
+    "imageUrl": "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=800&q=80",
+    "imageAlt": "Minimalist stone corridor with shadows",
+    "category": "Art",
+    "date": "2024-08-11"
+  },
+  {
+    "id": "9",
+    "title": "Giorgio Agamben. The Sovereign and the Threshold of Exception",
+    "excerpt": "When the suspension of law becomes the ultimate expression of the law itself: an analysis of the modern political state of emergency.",
+    "slug": "giorgio-agamben-sovereign-threshold-exception",
+    "imageUrl": "https://images.unsplash.com/photo-1507679799987-c73779587ccf?w=800&q=80",
+    "imageAlt": "Abstract silhouette behind frosted glass",
+    "category": "Philosophy",
+    "date": "2024-07-29"
+  },
+  {
+    "id": "10",
+    "title": "The Tyranny of the Screen. Transparency as a Form of Control",
+    "excerpt": "In a world demanding absolute transparency, the right to opacity becomes the final frontier for individual freedom and genuine privacy.",
+    "slug": "tyranny-of-the-screen-transparency",
+    "imageUrl": "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?w=800&q=80",
+    "imageAlt": "Matrix of green digital code on a dark display",
+    "category": "Politics",
+    "date": "2024-07-15"
+  },
+  {
+    "id": "11",
+    "title": "In the Shadow of the Guillotine. Public Execution as Theater",
+    "excerpt": "An examination of how historical mechanisms of state violence were intentionally choreographed to transform terror into popular entertainment.",
+    "slug": "shadow-of-guillotine-public-execution",
+    "imageUrl": "https://images.unsplash.com/photo-1460881680858-30d872d5b530?w=800&q=80",
+    "imageAlt": "Dark dramatic stage lighting in an empty theater",
+    "category": "History",
+    "date": "2024-06-30"
+  },
+  {
+    "id": "12",
+    "title": "The Anatomy of Nostalgia. Why We Long for Timelines We Never Lived",
+    "excerpt": "An essay investigating the cultural phenomenon of anemoia—the acute, paradoxical yearning for a past one has never personally witnessed.",
+    "slug": "anatomy-of-nostalgia-anemoia",
+    "imageUrl": "https://images.unsplash.com/photo-1455390582262-044cdead277a?w=800&q=80",
+    "imageAlt": "Stack of old vintage books and photographs",
+    "category": "Essay",
+    "date": "2024-06-12"
+  }
+]

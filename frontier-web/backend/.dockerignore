@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/*.user
+**/.vs/
+**/.git/
+*.db
+*.db-shm
+*.db-wal
+blog.db.stale-backup
+temp/
